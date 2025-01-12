@@ -1,7 +1,6 @@
-import os
-import sys
-
 import pygame
+import sys
+import os
 from screeninfo import get_monitors
 
 
@@ -12,107 +11,184 @@ def load_image(name, colorkey=None):
         print(f"Файл с изображением '{fullname}' не найден")
         sys.exit()
     image = pygame.image.load(fullname)
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
     return image
 
 
-class MainCharacter(pygame.sprite.Sprite):
-    image = load_image("picachu.png")
+def load_level(filename):
+    filename = "data/" + filename
+    # читаем уровень, убирая символы перевода строки
+    with open(filename, 'r') as mapFile:
+        level_map = [line.strip() for line in mapFile]
 
-    def __init__(self, *group):
-        # НЕОБХОДИМО вызвать конструктор родительского класса Sprite.
-        # Это очень важно!!!
-        super().__init__(*group)
-        self.image = MainCharacter.image
-        self.rect = self.image.get_rect()
-        self.rect.x = 1
-        self.rect.y = 1
+    # и подсчитываем максимальную длину
+    max_width = max(map(len, level_map))
 
-    def set_place(self, x, y):
-        self.rect.x = x
-        self.rect.y = y
+    # дополняем каждую строку пустыми клетками ('.')
+    return list(map(lambda x: x.ljust(max_width, '.'), level_map))
 
 
-class Board:
-    # создание поля
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
-        self.board = [[0] * width for _ in range(height)]
-        # значения клеток по умолчанию(не по умолчанию пока не хочется)
-        self.left = 10
-        self.top = 10
-        self.cell_size = 50
+def terminate():
+    pygame.quit()
+    sys.exit()
 
-        # установка главного героя на доске
-        self.character = MainCharacter()
-        self.character.set_place((width // 2) * self.cell_size + self.left, (height // 2) * self.cell_size + self.top)
-        self.board[width // 2][height // 2] = 1
 
-    # настройка внешнего вида
-    def set_view(self, left, top, cell_size):
-        self.left = left
-        self.top = top
-        self.cell_size = cell_size
+class Tile(pygame.sprite.Sprite):
+    def __init__(self, tile_type, pos_x, pos_y):
+        if tile_type == 'empty':
+            super().__init__(grasses_group, all_sprites)
+        if tile_type == 'wall':
+            super().__init__(walls_group, all_sprites)
+        self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+        self.mask = pygame.mask.from_surface(self.image)
 
-    def render(self, screen):
-        for x in range(self.width):
-            for y in range(self.height):
-                if self.board[x][y] != 1:
-                    pygame.draw.rect(screen, pygame.Color('black'),
-                                     (x * self.cell_size + self.left, y * self.cell_size + self.top, self.cell_size,
-                                      self.cell_size))
-                pygame.draw.rect(screen, pygame.Color('white'),
-                                 (x * self.cell_size + self.left, y * self.cell_size + self.top, self.cell_size,
-                                  self.cell_size), 1)
 
-    def get_click(self, mouse_pos):  # переписать
-        cell = self.get_cell(mouse_pos)
-        if cell:
-            self.on_click(cell)
-            self.render(screen)
-        else:
-            print(None)
+class Player(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(player_group, all_sprites)
+        self.image = player_image
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x + 15, tile_height * pos_y + 5)
+        self.mask = pygame.mask.from_surface(self.image)
 
-    def get_cell(self, mouse_pos):
-        cell_x = (mouse_pos[0] - self.left) // self.cell_size
-        cell_y = (mouse_pos[1] - self.top) // self.cell_size
-        if cell_x < 0 or cell_x >= self.width or cell_y < 0 or cell_y >= self.height:
-            return None
-        return cell_x, cell_y
+    def update(self):
+        if LEFT:
+            player.rect.x -= 50
+            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                player.rect.x += 50
+        if RIGHT:
+            player.rect.x += 50
+            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                player.rect.x -= 50
+        if UP:
+            player.rect.y -= 50
+            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                player.rect.y += 50
+        if DOWN:
+            player.rect.y += 50
+            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                player.rect.y -= 50
 
-    def on_click(self, cell):
-        print(cell)
-        self.board[cell[1]][cell[0]] = (self.board[cell[1]][cell[0]] + 1) % 3
+
+def generate_level(level):
+    new_player, x, y = None, None, None
+    for y in range(len(level)):
+        for x in range(len(level[y])):
+            if level[y][x] == '.':
+                Tile('empty', x, y)
+            elif level[y][x] == '#':
+                Tile('wall', x, y)
+            elif level[y][x] == '@':
+                Tile('empty', x, y)
+                new_player = Player(x, y)
+    # вернем игрока, а также размер поля в клетках
+    return new_player, x, y
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self):
+        self.dx = 0
+        self.dy = 0
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        obj.rect.y += self.dy
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
+        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
+
+
+# Константы
+
+FPS = 50
+pygame.init()
+size = WIDTH, HEIGHT = width, height = 600, 600
+screen = pygame.display.set_mode(size)
+clock = pygame.time.Clock()
+tile_images = {
+    'wall': load_image('box.png'),
+    'empty': load_image('grass.png')
+}
+player_image = load_image('mar.png')
+
+
+monitors = get_monitors()
+image = load_image("fon.jpg", -1)
+image = pygame.transform.scale(image, (monitors[0].width - 1, monitors[0].height - 1))
+screen.blit(image, (0, 0))
+
+
+tile_width = tile_height = 50
+
+LEFT = False
+RIGHT = False
+UP = False
+DOWN = False
+running = True
+fullscreen = True
+#
 
 
 if __name__ == '__main__':
-    m = get_monitors()
-    pygame.init()
-    size = width, height = 800, 400
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)  # Открытие на весь экран
+    player = None
 
-    characters = pygame.sprite.Group()
-    MainCharacter(characters)
-
-    board = Board(m[0].width // 50, m[0].height // 50)
+    # группы спрайтов
+    all_sprites = pygame.sprite.Group()
+    grasses_group = pygame.sprite.Group()
+    walls_group = pygame.sprite.Group()
+    player_group = pygame.sprite.Group()
+    player, level_x, level_y = generate_level(load_level('map.txt'))
+    camera = Camera()
     running = True
-    fullscreen = True
+
     while running:
+        screen.fill((0, 0, 0))
+        clock.tick(8)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                board.get_click(event.pos)
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F11:
-                    fullscreen = not fullscreen
-                    if fullscreen:
-                        win = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                    else:
-                        win = pygame.display.set_mode((800, 600))
-        screen.fill((0, 0, 0))
-        characters.draw(screen)
-        characters.update()
-        board.render(screen)
+                terminate()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    LEFT = True
+                if event.key == pygame.K_RIGHT:
+                    RIGHT = True
+                if event.key == pygame.K_UP:
+                    UP = True
+                if event.key == pygame.K_DOWN:
+                    DOWN = True
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    LEFT = False
+                if event.key == pygame.K_RIGHT:
+                    RIGHT = False
+                if event.key == pygame.K_UP:
+                    UP = False
+                if event.key == pygame.K_DOWN:
+                    DOWN = False
+
+        screen.blit(image, (0, 0))
+        camera.update(player)
+        player.update()
+        # обновляем положение всех спрайтов
+        for sprite in all_sprites:
+            camera.apply(sprite)
+
+        grasses_group.draw(screen)
+        walls_group.draw(screen)
+        player_group.draw(screen)
+
         pygame.display.flip()
+
     pygame.quit()
