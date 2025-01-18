@@ -118,10 +118,10 @@ size = WIDTH, HEIGHT = width, height = 600, 600
 screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 tile_images = {
-    'wall': load_image('box.png'),
-    'empty': load_image('grass.png')
+    'wall': pygame.transform.scale(load_image('box.png'), (50, 50)),
+    'empty': pygame.transform.scale(load_image('grass.png'), (50, 50))
 }
-player_image = load_image('mar.png')
+player_image = pygame.transform.scale(load_image('mar.png'), (35, 35))
 
 
 monitors = get_monitors()
