@@ -91,7 +91,6 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
         self.mask = pygame.mask.from_surface(self.image)
-        self.COUNTSPEEDCHARACTER = 0
 
     def update(self):
         if self.COUNTSPEEDCHARACTER > 5:
@@ -188,9 +187,8 @@ if __name__ == '__main__':
                     DOWN = False
 
         screen.blit(image, (0, 0))
-
-        player.update()
         camera.update(player)
+        player.update()
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
             camera.apply(sprite)
