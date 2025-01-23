@@ -39,6 +39,39 @@ def terminate():
     sys.exit()
 
 
+
+# Константы
+
+FPS = 50
+pygame.init()
+size = WIDTH, HEIGHT = width, height = 600, 600
+screen = pygame.display.set_mode(size)
+clock = pygame.time.Clock()
+tile_images = {
+    'wall': load_image('box.png'),
+    'empty': load_image('grass.png')
+}
+player_image = load_image('mar.png')
+
+
+monitors = get_monitors()
+image = load_image("fon.jpg", -1)
+image = pygame.transform.scale(image, (monitors[0].width - 1, monitors[0].height - 1))
+screen.blit(image, (0, 0))
+
+
+tile_width = tile_height = 50
+
+LEFT = False
+RIGHT = False
+UP = False
+DOWN = False
+running = True
+fullscreen = True
+#
+
+
+
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         if tile_type == 'empty':
@@ -58,24 +91,28 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x + 15, tile_height * pos_y + 5)
         self.mask = pygame.mask.from_surface(self.image)
+        self.COUNTSPEEDCHARACTER = 0
 
     def update(self):
-        if LEFT:
-            player.rect.x -= 50
-            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
-                player.rect.x += 50
-        if RIGHT:
-            player.rect.x += 50
-            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+        if self.COUNTSPEEDCHARACTER > 5:
+            if LEFT:
                 player.rect.x -= 50
-        if UP:
-            player.rect.y -= 50
-            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
-                player.rect.y += 50
-        if DOWN:
-            player.rect.y += 50
-            if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                    player.rect.x += 50
+            if RIGHT:
+                player.rect.x += 50
+                if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                    player.rect.x -= 50
+            if UP:
                 player.rect.y -= 50
+                if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                    player.rect.y += 50
+            if DOWN:
+                player.rect.y += 50
+                if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
+                    player.rect.y -= 50
+            self.COUNTSPEEDCHARACTER = 0
+        self.COUNTSPEEDCHARACTER += 1
 
 
 def generate_level(level):
@@ -110,35 +147,7 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
-# Константы
 
-FPS = 50
-pygame.init()
-size = WIDTH, HEIGHT = width, height = 600, 600
-screen = pygame.display.set_mode(size)
-clock = pygame.time.Clock()
-tile_images = {
-    'wall': load_image('box.png'),
-    'empty': load_image('grass.png')
-}
-player_image = load_image('mar.png')
-
-
-monitors = get_monitors()
-image = load_image("fon.jpg", -1)
-image = pygame.transform.scale(image, (monitors[0].width - 1, monitors[0].height - 1))
-screen.blit(image, (0, 0))
-
-
-tile_width = tile_height = 50
-
-LEFT = False
-RIGHT = False
-UP = False
-DOWN = False
-running = True
-fullscreen = True
-#
 
 
 if __name__ == '__main__':
@@ -179,8 +188,9 @@ if __name__ == '__main__':
                     DOWN = False
 
         screen.blit(image, (0, 0))
-        camera.update(player)
+
         player.update()
+        camera.update(player)
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
             camera.apply(sprite)
