@@ -49,9 +49,11 @@ screen = pygame.display.set_mode(size)
 clock = pygame.time.Clock()
 tile_images = {
     'wall': load_image('box.png'),
-    'empty': load_image('grass.png')
+    'empty': load_image('grass.png'),
+    'enemy': pygame.transform.scale(load_image('enemy.png'), (50, 50))
 }
-player_image = load_image('mar.png')
+player_image = pygame.transform.scale(load_image('mar.png'), (50, 50))
+enemy_image = pygame.transform.scale(load_image('enemy.png'), (50, 50))
 
 
 monitors = get_monitors()
@@ -78,6 +80,8 @@ class Tile(pygame.sprite.Sprite):
             super().__init__(grasses_group, all_sprites)
         if tile_type == 'wall':
             super().__init__(walls_group, all_sprites)
+        if tile_type == 'enemy':
+            super().__init__(enemy_group, all_sprites)
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
@@ -89,8 +93,9 @@ class Player(pygame.sprite.Sprite):
         super().__init__(player_group, all_sprites)
         self.image = player_image
         self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 15, tile_height * pos_y + 5)
+            tile_width * pos_x, tile_height * pos_y)
         self.mask = pygame.mask.from_surface(self.image)
+        self.COUNTSPEEDCHARACTER = 0
 
     def update(self):
         if self.COUNTSPEEDCHARACTER > 5:
@@ -114,6 +119,15 @@ class Player(pygame.sprite.Sprite):
         self.COUNTSPEEDCHARACTER += 1
 
 
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(enemy_group, all_sprites)
+        self.image = enemy_image
+        self.rect = self.image.get_rect().move(
+            tile_width * pos_x, tile_height * pos_y)
+        self.mask = pygame.mask.from_surface(self.image)
+
+
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
@@ -125,6 +139,9 @@ def generate_level(level):
             elif level[y][x] == '@':
                 Tile('empty', x, y)
                 new_player = Player(x, y)
+            elif level[y][x] == '!':
+                Tile('enemy', x, y)
+                Enemy(x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
 
@@ -157,6 +174,7 @@ if __name__ == '__main__':
     grasses_group = pygame.sprite.Group()
     walls_group = pygame.sprite.Group()
     player_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
     player, level_x, level_y = generate_level(load_level('map.txt'))
     camera = Camera()
     running = True
@@ -187,8 +205,8 @@ if __name__ == '__main__':
                     DOWN = False
 
         screen.blit(image, (0, 0))
-        camera.update(player)
         player.update()
+        camera.update(player)
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
             camera.apply(sprite)
@@ -196,7 +214,7 @@ if __name__ == '__main__':
         grasses_group.draw(screen)
         walls_group.draw(screen)
         player_group.draw(screen)
-
+        enemy_group.draw(screen)
         pygame.display.flip()
 
     pygame.quit()
