@@ -3,6 +3,8 @@ import sys
 import os
 from screeninfo import get_monitors
 
+import queue  # очередь, надо при нахождении кратчайших путей
+
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
@@ -95,26 +97,68 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.mask = pygame.mask.from_surface(self.image)
+        self.x = pos_x
+        self.y = pos_y
         self.COUNTSPEEDCHARACTER = 0
 
-    def update(self):
-        if self.COUNTSPEEDCHARACTER > 5:
+    def shortest_paths(self, lvl):  # получаем сохранённую карту, которую получали из load_level. Вернйм карту с
+        # родителем, из которого мы пришли, используется bfs
+        n, m = len(lvl), len(lvl[0])
+        shortest_paths = [[1e20] * m for i in range(n)]
+        daddies = [[-1] * m for i in range(n)]
+        daddies[self.x][self.y] = (self.x, self.y)
+        shortest_paths[self.x][self.y] = 0
+        q = queue.Queue()
+        q.put((self.x, self.y))
+        while not q.empty():
+            x, y = q.get()
+            q.task_done()
+            if lvl[x][y] != '#':
+                if x > 0 and shortest_paths[x - 1][y] == 1e20:
+                    shortest_paths[x - 1][y] = shortest_paths[x][y] + 1
+                    daddies[x - 1][y] = (x, y)
+                    q.put((x - 1, y))
+                if x < n and shortest_paths[x + 1][y] == 1e20:
+                    shortest_paths[x + 1][y] = shortest_paths[x][y] + 1
+                    daddies[x + 1][y] = (x, y)
+                    q.put((x + 1, y))
+                if y > 0 and shortest_paths[x][y - 1] == 1e20:
+                    shortest_paths[x][y - 1] = shortest_paths[x][y] + 1
+                    daddies[x][y - 1] = (x, y)
+                    q.put((x, y - 1))
+                if y < m and shortest_paths[x][y + 1] == 1e20:
+                    shortest_paths[x][y + 1] = shortest_paths[x][y] + 1
+                    daddies[x][y + 1] = (x, y)
+                    q.put((x, y + 1))
+        return daddies
+
+
+    def update(self):  # передвижение основного персонажа
+        if self.COUNTSPEEDCHARACTER > 5:  # передвигаемся каждые пять тиков
             if LEFT:
                 player.rect.x -= 50
+                self.x -= 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
                     player.rect.x += 50
+                    self.x += 1
             if RIGHT:
                 player.rect.x += 50
+                self.x += 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
                     player.rect.x -= 50
+                    self.x -= 1
             if UP:
                 player.rect.y -= 50
+                self.y -= 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
                     player.rect.y += 50
+                    self.y += 1
             if DOWN:
                 player.rect.y += 50
+                self.y += 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
                     player.rect.y -= 50
+                    self.y -= 1
             self.COUNTSPEEDCHARACTER = 0
         self.COUNTSPEEDCHARACTER += 1
 
@@ -123,16 +167,36 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(enemy_group, all_sprites)
         self.image = enemy_image
+        self.x = pos_x
+        self.y = pos_y
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.mask = pygame.mask.from_surface(self.image)
+        self.COUNTSPEEDCHARACTER = 0
+
+    def update(self, daddy):  # ДОПИСАТЬ
+        if self.COUNTSPEEDCHARACTER > 8:
+            if daddy[self.x][self.y][0] - self.x > 0:
+                self.rect.x += 50
+                self.x += 1
+            elif daddy[self.x][self.y][0] - self.x < 0:
+                self.rect.x -= 50
+                self.x -= 1
+            elif daddy[self.x][self.y][1] - self.y > 0:
+                self.rect.y += 50
+                self.y += 1
+            elif daddy[self.x][self.y][1] - self.y < 0:
+                self.rect.y -= 50
+                self.y -= 1
+            self.COUNTSPEEDCHARACTER = 0
+        self.COUNTSPEEDCHARACTER += 1
 
 
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
-            if level[y][x] == '.':
+            if level[y][x] == '.' :
                 Tile('empty', x, y)
             elif level[y][x] == '#':
                 Tile('wall', x, y)
@@ -140,7 +204,7 @@ def generate_level(level):
                 Tile('empty', x, y)
                 new_player = Player(x, y)
             elif level[y][x] == '!':
-                Tile('enemy', x, y)
+                Tile('empty', x, y)
                 Enemy(x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
@@ -175,7 +239,8 @@ if __name__ == '__main__':
     walls_group = pygame.sprite.Group()
     player_group = pygame.sprite.Group()
     enemy_group = pygame.sprite.Group()
-    player, level_x, level_y = generate_level(load_level('map.txt'))
+    level = load_level('map.txt')
+    player, level_x, level_y = generate_level(level)
     camera = Camera()
     running = True
 
@@ -206,6 +271,10 @@ if __name__ == '__main__':
 
         screen.blit(image, (0, 0))
         player.update()
+        daddies = player.shortest_paths(level)
+        # обновление расположения врагов
+        for el in enemy_group:
+            el.update(daddies)
         camera.update(player)
         # обновляем положение всех спрайтов
         for sprite in all_sprites:
