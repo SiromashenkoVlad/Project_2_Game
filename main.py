@@ -68,6 +68,7 @@ RIGHT = False
 UP = False
 DOWN = False
 DIRECTION = "EAST"
+ATTACK = 0
 
 running = True
 fullscreen = True
@@ -159,6 +160,7 @@ class Player(pygame.sprite.Sprite):
                     self.rect.y -= 50
                     self.y -= 1
             self.COUNTSPEEDCHARACTER = 0
+        sword.change_position(self.x, self.y)
         self.COUNTSPEEDCHARACTER += 1
 
 
@@ -207,6 +209,15 @@ class Sword(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.angle = -100
 
+    def change_position(self, pos_x, pos_y):
+        self.x = player.x
+        self.y = player.y
+        self.pos_x = player.rect.x + 15
+        self.pos_y = player.rect.y + 15
+        self.rect = self.image.get_rect().move(
+            self.pos_x, self.pos_y)
+        self.mask = pygame.mask.from_surface(self.image)
+
     def blitRotate(self, surf, pos):
         image = pygame.transform.scale(load_image('sword.png'), (25, 80))
         image = pygame.transform.rotate(image, -100)
@@ -215,19 +226,18 @@ class Sword(pygame.sprite.Sprite):
         box_rotate = [p.rotate(self.angle) for p in box]
         min_box = (min(box_rotate, key=lambda p: p[0])[0], min(box_rotate, key=lambda p: p[1])[1])
         max_box = (max(box_rotate, key=lambda p: p[0])[0], max(box_rotate, key=lambda p: p[1])[1])
-        origin = (self.pos_x + min_box[0] + 90, self.pos_y - max_box[1] + 115)
+        origin = (self.pos_x + min_box[0], self.pos_y - max_box[1])
 
         self.rect = self.image.get_rect().move(origin)
         self.mask = pygame.mask.from_surface(self.image)
 
         self.image = rotated_image = pygame.transform.rotate(image, self.angle)
         surf.blit(rotated_image, origin)
-        self.angle -= 8
+        self.angle -= 15
 
         for x in enemy_group:
             if pygame.sprite.collide_mask(self, x):
                 x.CANWALK = False
-
 
 
 def generate_level(level):
@@ -313,8 +323,8 @@ if __name__ == '__main__':
                     UP = False
                 if event.key == pygame.K_DOWN:
                     DOWN = False
-            # if event.type == pygame.MOUSEBUTTONDOWN:
-            #     sword.attack()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                ATTACK = 1
 
         screen.blit(image, (0, 0))
         player.update()
@@ -327,7 +337,11 @@ if __name__ == '__main__':
         for sprite in all_sprites:
             camera.apply(sprite)
 
-        sword.blitRotate(screen, (tile_width * player.x, tile_height * player.y))
+        if 0 < ATTACK < 25:
+            sword.blitRotate(screen, (tile_width * player.x, tile_height * player.y))
+            ATTACK += 1
+        elif ATTACK > 25:
+            ATTACK = 0
         all_sprites.draw(screen)
         player_group.draw(screen)
         sword_group.draw(screen)
