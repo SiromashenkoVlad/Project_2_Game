@@ -41,7 +41,6 @@ def terminate():
     sys.exit()
 
 
-
 # Константы
 
 FPS = 50
@@ -57,12 +56,10 @@ tile_images = {
 player_image = pygame.transform.scale(load_image('mar.png'), (50, 50))
 enemy_image = pygame.transform.scale(load_image('enemy.png'), (50, 50))
 
-
 monitors = get_monitors()
 image = load_image("fon.jpg", -1)
 image = pygame.transform.scale(image, (monitors[0].width - 1, monitors[0].height - 1))
 screen.blit(image, (0, 0))
-
 
 tile_width = tile_height = 50
 
@@ -70,10 +67,13 @@ LEFT = False
 RIGHT = False
 UP = False
 DOWN = False
+DIRECTION = "EAST"
+
 running = True
 fullscreen = True
-#
 
+
+#
 
 
 class Tile(pygame.sprite.Sprite):
@@ -132,32 +132,31 @@ class Player(pygame.sprite.Sprite):
                     q.put((x, y + 1))
         return daddies
 
-
     def update(self):  # передвижение основного персонажа
         if self.COUNTSPEEDCHARACTER > 5:  # передвигаемся каждые пять тиков
             if LEFT:
-                player.rect.x -= 50
+                self.rect.x -= 50
                 self.x -= 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
-                    player.rect.x += 50
+                    self.rect.x += 50
                     self.x += 1
             if RIGHT:
-                player.rect.x += 50
+                self.rect.x += 50
                 self.x += 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
-                    player.rect.x -= 50
+                    self.rect.x -= 50
                     self.x -= 1
             if UP:
-                player.rect.y -= 50
+                self.rect.y -= 50
                 self.y -= 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
-                    player.rect.y += 50
+                    self.rect.y += 50
                     self.y += 1
             if DOWN:
-                player.rect.y += 50
+                self.rect.y += 50
                 self.y += 1
                 if any(pygame.sprite.collide_mask(self, x) for x in walls_group):
-                    player.rect.y -= 50
+                    self.rect.y -= 50
                     self.y -= 1
             self.COUNTSPEEDCHARACTER = 0
         self.COUNTSPEEDCHARACTER += 1
@@ -173,9 +172,10 @@ class Enemy(pygame.sprite.Sprite):
             tile_width * pos_x, tile_height * pos_y)
         self.mask = pygame.mask.from_surface(self.image)
         self.COUNTSPEEDCHARACTER = 0
+        self.CANWALK = True
 
     def update(self, daddy):  # ДОПИСАТЬ
-        if self.COUNTSPEEDCHARACTER > 8:
+        if self.COUNTSPEEDCHARACTER > 16 and self.CANWALK:
             if daddy[self.x][self.y][0] - self.x > 0:
                 self.rect.x += 50
                 self.x += 1
@@ -192,11 +192,49 @@ class Enemy(pygame.sprite.Sprite):
         self.COUNTSPEEDCHARACTER += 1
 
 
+class Sword(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(sword_group, all_sprites)
+
+        self.image = pygame.transform.scale(load_image('sword.png'), (25, 80))
+        self.image = pygame.transform.rotate(self.image, -45)
+        self.x = pos_x
+        self.y = pos_y
+        self.pos_x = tile_width * pos_x + 15
+        self.pos_y = tile_height * pos_y - 30
+        self.rect = self.image.get_rect().move(
+            self.pos_x, self.pos_y)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.angle = -100
+
+    def blitRotate(self, surf, pos):
+        image = pygame.transform.scale(load_image('sword.png'), (25, 80))
+        image = pygame.transform.rotate(image, -100)
+        w, h = image.get_size()
+        box = [pygame.math.Vector2(p) for p in [(0, 0), (w, 0), (w, -h), (0, -h)]]
+        box_rotate = [p.rotate(self.angle) for p in box]
+        min_box = (min(box_rotate, key=lambda p: p[0])[0], min(box_rotate, key=lambda p: p[1])[1])
+        max_box = (max(box_rotate, key=lambda p: p[0])[0], max(box_rotate, key=lambda p: p[1])[1])
+        origin = (self.pos_x + min_box[0] + 90, self.pos_y - max_box[1] + 115)
+
+        self.rect = self.image.get_rect().move(origin)
+        self.mask = pygame.mask.from_surface(self.image)
+
+        self.image = rotated_image = pygame.transform.rotate(image, self.angle)
+        surf.blit(rotated_image, origin)
+        self.angle -= 8
+
+        for x in enemy_group:
+            if pygame.sprite.collide_mask(self, x):
+                x.CANWALK = False
+
+
+
 def generate_level(level):
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level[y])):
-            if level[y][x] == '.' :
+            if level[y][x] == '.':
                 Tile('empty', x, y)
             elif level[y][x] == '#':
                 Tile('wall', x, y)
@@ -227,9 +265,6 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
-
-
-
 if __name__ == '__main__':
     player = None
 
@@ -239,9 +274,14 @@ if __name__ == '__main__':
     walls_group = pygame.sprite.Group()
     player_group = pygame.sprite.Group()
     enemy_group = pygame.sprite.Group()
+    sword_group = pygame.sprite.Group()
+
+    # загрузка уровня
     level = load_level('map.txt')
     player, level_x, level_y = generate_level(level)
     camera = Camera()
+
+    sword = Sword(player.x, player.y)
     running = True
 
     while running:
@@ -253,12 +293,17 @@ if __name__ == '__main__':
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     LEFT = True
+                    DIRECTION = "WEST"
                 if event.key == pygame.K_RIGHT:
                     RIGHT = True
+                    DIRECTION = "WEST"
                 if event.key == pygame.K_UP:
                     UP = True
+                    DIRECTION = "NORTH"
                 if event.key == pygame.K_DOWN:
                     DOWN = True
+                    DIRECTION = "SOUTH"
+
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
                     LEFT = False
@@ -268,6 +313,8 @@ if __name__ == '__main__':
                     UP = False
                 if event.key == pygame.K_DOWN:
                     DOWN = False
+            # if event.type == pygame.MOUSEBUTTONDOWN:
+            #     sword.attack()
 
         screen.blit(image, (0, 0))
         player.update()
@@ -280,10 +327,10 @@ if __name__ == '__main__':
         for sprite in all_sprites:
             camera.apply(sprite)
 
-        grasses_group.draw(screen)
-        walls_group.draw(screen)
+        sword.blitRotate(screen, (tile_width * player.x, tile_height * player.y))
+        all_sprites.draw(screen)
         player_group.draw(screen)
-        enemy_group.draw(screen)
+        sword_group.draw(screen)
         pygame.display.flip()
 
     pygame.quit()
