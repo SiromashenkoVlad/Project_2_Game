@@ -1,13 +1,12 @@
 import pygame
-
+from Sprites import enemy_group, all_sprites
 
 tile_width = tile_height = 50
-enemy_group = pygame.sprite.Group()
 
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, enemy_image):
-        super().__init__(enemy_group)
+        super().__init__(enemy_group, all_sprites)
         self.image = enemy_image
         self.x = pos_x
         self.y = pos_y

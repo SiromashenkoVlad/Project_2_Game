@@ -6,9 +6,10 @@ from screeninfo import get_monitors
 import queue  # очередь, надо при нахождении кратчайших путей
 
 
+from Sprites import all_sprites, grasses_group, walls_group, player_group, enemy_group, sword_group
 from Camera import Camera
-#from load_image import load_image
-from Enemy import Enemy, enemy_group
+from Enemy import Enemy
+
 
 
 def load_image(name, colorkey=None):
@@ -74,6 +75,7 @@ UP = False
 DOWN = False
 DIRECTION = "EAST"
 ATTACK = 0
+FIRST_ROOM = 1
 
 running = True
 fullscreen = True
@@ -165,38 +167,11 @@ class Player(pygame.sprite.Sprite):
                     self.rect.y -= 50
                     self.y -= 1
             self.COUNTSPEEDCHARACTER = 0
+
+        if any(pygame.sprite.collide_mask(self, x) and x.CANWALK for x in enemy_group):
+            end_screen("You are dead")
         sword.change_position(self.x, self.y)
         self.COUNTSPEEDCHARACTER += 1
-
-
-# class Enemy(pygame.sprite.Sprite):
-#     def __init__(self, pos_x, pos_y):
-#         super().__init__(enemy_group, all_sprites)
-#         self.image = enemy_image
-#         self.x = pos_x
-#         self.y = pos_y
-#         self.rect = self.image.get_rect().move(
-#             tile_width * pos_x, tile_height * pos_y)
-#         self.mask = pygame.mask.from_surface(self.image)
-#         self.COUNTSPEEDCHARACTER = 0
-#         self.CANWALK = True
-#
-#     def update(self, daddy):  # ДОПИСАТЬ
-#         if self.COUNTSPEEDCHARACTER > 16 and self.CANWALK:
-#             if daddy[self.x][self.y][0] - self.x > 0:
-#                 self.rect.x += 50
-#                 self.x += 1
-#             elif daddy[self.x][self.y][0] - self.x < 0:
-#                 self.rect.x -= 50
-#                 self.x -= 1
-#             elif daddy[self.x][self.y][1] - self.y > 0:
-#                 self.rect.y += 50
-#                 self.y += 1
-#             elif daddy[self.x][self.y][1] - self.y < 0:
-#                 self.rect.y -= 50
-#                 self.y -= 1
-#             self.COUNTSPEEDCHARACTER = 0
-#         self.COUNTSPEEDCHARACTER += 1
 
 
 class Sword(pygame.sprite.Sprite):
@@ -263,16 +238,67 @@ def generate_level(level):
     return new_player, x, y
 
 
+
+def start_screen():
+    intro_text = ["Добро пожаловать!", "",
+                  "Нажите любую кнопку,",
+                  "Чтобы начать игру"]
+
+    # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    # screen.blit(fon, (0, 0))
+    screen.fill((0, 0, 0))
+    font = pygame.font.Font(None, 30)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return  # начинаем игру
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def end_screen(text="The end"):
+    intro_text = [text]
+
+    # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
+    # screen.blit(fon, (0, 0))
+    screen.fill((0, 0, 0))
+    font = pygame.font.Font(None, 50)
+    text_coord = 50
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('white'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 10
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
 if __name__ == '__main__':
     player = None
 
-    # группы спрайтов
-    all_sprites = pygame.sprite.Group()
-    grasses_group = pygame.sprite.Group()
-    walls_group = pygame.sprite.Group()
-    player_group = pygame.sprite.Group()
-    #enemy_group = pygame.sprite.Group()
-    sword_group = pygame.sprite.Group()
+
+    start_screen()
 
     # загрузка уровня
     level = load_level('map.txt')
@@ -337,6 +363,18 @@ if __name__ == '__main__':
         player_group.draw(screen)
         sword_group.draw(screen)
         pygame.display.flip()
+        # if all(en.CANWALK == False for en in enemy_group) and FIRST_ROOM:
+        #     all_sprites.empty()
+        #     grasses_group.empty()
+        #     walls_group.empty()
+        #     player_group.empty()
+        #     enemy_group.empty()
+        #     sword_group.empty()
+        #     level = load_level('map2.txt')
+        #     player, level_x, level_y = generate_level(level)
+        #     sword = Sword(player.x, player.y)
+        if all(en.CANWALK == False for en in enemy_group):
+            end_screen()
 
     pygame.quit()
 # лалул
