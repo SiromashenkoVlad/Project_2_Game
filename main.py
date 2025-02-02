@@ -6,6 +6,11 @@ from screeninfo import get_monitors
 import queue  # очередь, надо при нахождении кратчайших путей
 
 
+from Camera import Camera
+#from load_image import load_image
+from Enemy import Enemy, enemy_group
+
+
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
     # если файл не существует, то выходим
@@ -164,34 +169,34 @@ class Player(pygame.sprite.Sprite):
         self.COUNTSPEEDCHARACTER += 1
 
 
-class Enemy(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(enemy_group, all_sprites)
-        self.image = enemy_image
-        self.x = pos_x
-        self.y = pos_y
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x, tile_height * pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
-        self.COUNTSPEEDCHARACTER = 0
-        self.CANWALK = True
-
-    def update(self, daddy):  # ДОПИСАТЬ
-        if self.COUNTSPEEDCHARACTER > 16 and self.CANWALK:
-            if daddy[self.x][self.y][0] - self.x > 0:
-                self.rect.x += 50
-                self.x += 1
-            elif daddy[self.x][self.y][0] - self.x < 0:
-                self.rect.x -= 50
-                self.x -= 1
-            elif daddy[self.x][self.y][1] - self.y > 0:
-                self.rect.y += 50
-                self.y += 1
-            elif daddy[self.x][self.y][1] - self.y < 0:
-                self.rect.y -= 50
-                self.y -= 1
-            self.COUNTSPEEDCHARACTER = 0
-        self.COUNTSPEEDCHARACTER += 1
+# class Enemy(pygame.sprite.Sprite):
+#     def __init__(self, pos_x, pos_y):
+#         super().__init__(enemy_group, all_sprites)
+#         self.image = enemy_image
+#         self.x = pos_x
+#         self.y = pos_y
+#         self.rect = self.image.get_rect().move(
+#             tile_width * pos_x, tile_height * pos_y)
+#         self.mask = pygame.mask.from_surface(self.image)
+#         self.COUNTSPEEDCHARACTER = 0
+#         self.CANWALK = True
+#
+#     def update(self, daddy):  # ДОПИСАТЬ
+#         if self.COUNTSPEEDCHARACTER > 16 and self.CANWALK:
+#             if daddy[self.x][self.y][0] - self.x > 0:
+#                 self.rect.x += 50
+#                 self.x += 1
+#             elif daddy[self.x][self.y][0] - self.x < 0:
+#                 self.rect.x -= 50
+#                 self.x -= 1
+#             elif daddy[self.x][self.y][1] - self.y > 0:
+#                 self.rect.y += 50
+#                 self.y += 1
+#             elif daddy[self.x][self.y][1] - self.y < 0:
+#                 self.rect.y -= 50
+#                 self.y -= 1
+#             self.COUNTSPEEDCHARACTER = 0
+#         self.COUNTSPEEDCHARACTER += 1
 
 
 class Sword(pygame.sprite.Sprite):
@@ -253,26 +258,9 @@ def generate_level(level):
                 new_player = Player(x, y)
             elif level[y][x] == '!':
                 Tile('empty', x, y)
-                Enemy(x, y)
+                Enemy(x, y, enemy_image)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
-
-
-class Camera:
-    # зададим начальный сдвиг камеры
-    def __init__(self):
-        self.dx = 0
-        self.dy = 0
-
-    # сдвинуть объект obj на смещение камеры
-    def apply(self, obj):
-        obj.rect.x += self.dx
-        obj.rect.y += self.dy
-
-    # позиционировать камеру на объекте target
-    def update(self, target):
-        self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
 if __name__ == '__main__':
@@ -283,7 +271,7 @@ if __name__ == '__main__':
     grasses_group = pygame.sprite.Group()
     walls_group = pygame.sprite.Group()
     player_group = pygame.sprite.Group()
-    enemy_group = pygame.sprite.Group()
+    #enemy_group = pygame.sprite.Group()
     sword_group = pygame.sprite.Group()
 
     # загрузка уровня
@@ -342,7 +330,10 @@ if __name__ == '__main__':
             ATTACK += 1
         elif ATTACK > 25:
             ATTACK = 0
-        all_sprites.draw(screen)
+
+        grasses_group.draw(screen)
+        walls_group.draw(screen)
+        enemy_group.draw(screen)
         player_group.draw(screen)
         sword_group.draw(screen)
         pygame.display.flip()
