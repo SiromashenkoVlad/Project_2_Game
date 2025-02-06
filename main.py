@@ -67,6 +67,14 @@ image = load_image("fon.jpg", -1)
 image = pygame.transform.scale(image, (monitors[0].width - 1, monitors[0].height - 1))
 screen.blit(image, (0, 0))
 
+#загрузка музыки
+sound_zastavka = os.path.join(f'data/ИГРА ЗАСТАВКА МУЗЫКА.mp3')
+sound_battle = os.path.join(f'data/Музыка для игры 2.mp3')
+sound_z = pygame.mixer.Sound(sound_zastavka)
+sound_z.play(loops=-1)
+sound_z.set_volume(0.2)
+sound_b = pygame.mixer.Sound(sound_battle)
+
 tile_width = tile_height = 50
 
 LEFT = False
@@ -286,6 +294,9 @@ def start_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
+                sound_z.stop()
+                sound_b.play(loops=-1)
+                sound_b.set_volume(0.2)
                 return  # начинаем игру
         pygame.display.flip()
         clock.tick(FPS)
