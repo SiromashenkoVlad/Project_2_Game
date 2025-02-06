@@ -60,7 +60,7 @@ tile_images = {
     'enemy': pygame.transform.scale(load_image('enemy.png'), (50, 50))
 }
 player_image = pygame.transform.scale(load_image('mar.png'), (50, 50))
-enemy_image = pygame.transform.scale(load_image('enemy.png'), (50, 50))
+enemy_image = pygame.transform.scale(load_image('enemy.png', -1), (50, 50))
 
 monitors = get_monitors()
 image = load_image("fon.jpg", -1)
@@ -183,7 +183,7 @@ class Sword(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(sword_group, all_sprites)
 
-        self.image = pygame.transform.scale(load_image('sword.png'), (25, 80))
+        self.image = pygame.transform.scale(load_image('swordf.png', -1), (25, 80))
         self.image = pygame.transform.rotate(self.image, -45)
         self.x = pos_x
         self.y = pos_y
@@ -204,7 +204,7 @@ class Sword(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
 
     def blitRotate(self, surf, pos):
-        image = pygame.transform.scale(load_image('sword.png'), (25, 80))
+        image = pygame.transform.scale(load_image('swordf.png', -1), (25, 80))
         image = pygame.transform.rotate(image, -100)
         w, h = image.get_size()
         box = [pygame.math.Vector2(p) for p in [(0, 0), (w, 0), (w, -h), (0, -h)]]
