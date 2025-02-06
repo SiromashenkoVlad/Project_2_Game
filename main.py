@@ -4,12 +4,12 @@ import os
 from screeninfo import get_monitors
 
 import queue  # очередь, надо при нахождении кратчайших путей
-
+from datetime import datetime
+import time
 
 from Sprites import all_sprites, grasses_group, walls_group, player_group, enemy_group, sword_group
 from Camera import Camera
 from Enemy import Enemy
-
 
 
 def load_image(name, colorkey=None):
@@ -105,6 +105,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
         self.mask = pygame.mask.from_surface(self.image)
+        print(pos_x, pos_y)
         self.x = pos_x
         self.y = pos_y
         self.COUNTSPEEDCHARACTER = 0
@@ -112,8 +113,8 @@ class Player(pygame.sprite.Sprite):
     def shortest_paths(self, lvl):  # получаем сохранённую карту, которую получали из load_level. Вернйм карту с
         # родителем, из которого мы пришли, используется bfs
         n, m = len(lvl), len(lvl[0])
-        shortest_paths = [[1e20] * m for i in range(n)]
-        daddies = [[-1] * m for i in range(n)]
+        shortest_paths = [[1e20] * n for i in range(m)]
+        daddies = [[-1] * n for i in range(m)]
         daddies[self.x][self.y] = (self.x, self.y)
         shortest_paths[self.x][self.y] = 0
         q = queue.Queue()
@@ -121,23 +122,27 @@ class Player(pygame.sprite.Sprite):
         while not q.empty():
             x, y = q.get()
             q.task_done()
-            if lvl[x][y] != '#':
+            if lvl[y][x] != '#':
                 if x > 0 and shortest_paths[x - 1][y] == 1e20:
                     shortest_paths[x - 1][y] = shortest_paths[x][y] + 1
-                    daddies[x - 1][y] = (x, y)
                     q.put((x - 1, y))
+                    daddies[x - 1][y] = (x, y)
+
                 if x < n and shortest_paths[x + 1][y] == 1e20:
                     shortest_paths[x + 1][y] = shortest_paths[x][y] + 1
-                    daddies[x + 1][y] = (x, y)
                     q.put((x + 1, y))
+                    daddies[x + 1][y] = (x, y)
+
                 if y > 0 and shortest_paths[x][y - 1] == 1e20:
                     shortest_paths[x][y - 1] = shortest_paths[x][y] + 1
-                    daddies[x][y - 1] = (x, y)
                     q.put((x, y - 1))
+                    daddies[x][y - 1] = (x, y)
+
                 if y < m and shortest_paths[x][y + 1] == 1e20:
                     shortest_paths[x][y + 1] = shortest_paths[x][y] + 1
-                    daddies[x][y + 1] = (x, y)
                     q.put((x, y + 1))
+                    daddies[x][y + 1] = (x, y)
+
         return daddies
 
     def update(self):  # передвижение основного персонажа
@@ -238,14 +243,11 @@ def generate_level(level):
     return new_player, x, y
 
 
-
 def start_screen():
     intro_text = ["Добро пожаловать!", "",
                   "Нажите любую кнопку,",
                   "Чтобы начать игру"]
 
-    # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
-    # screen.blit(fon, (0, 0))
     screen.fill((0, 0, 0))
     font = pygame.font.Font(None, 30)
     text_coord = 50
@@ -271,7 +273,17 @@ def start_screen():
 
 def end_screen(text="The end"):
     intro_text = [text]
-
+    rec = open('records.txt', 'r+').readlines()
+    best_time = float(rec[0])
+    if best_time > (datetime.now() - start_time).total_seconds():
+        intro_text.append(f'Your time: {(datetime.now() - start_time).total_seconds()}')
+        if text == "The end":
+            f = open('records.txt', 'w')
+            f.truncate(0)
+            f.write(str((datetime.now() - start_time).total_seconds()))
+    else:
+        intro_text.append(f'Your time: {(datetime.now() - start_time).total_seconds()}')
+    intro_text.append(f'Best time: {best_time}')
     # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     # screen.blit(fon, (0, 0))
     screen.fill((0, 0, 0))
@@ -297,7 +309,7 @@ def end_screen(text="The end"):
 if __name__ == '__main__':
     player = None
 
-
+    start_time = datetime.now()
     start_screen()
 
     # загрузка уровня
@@ -309,6 +321,23 @@ if __name__ == '__main__':
     running = True
 
     while running:
+
+        if all(en.CANWALK == False for en in enemy_group) and FIRST_ROOM:
+            all_sprites.empty()
+            grasses_group.empty()
+            walls_group.empty()
+            player_group.empty()
+            enemy_group.empty()
+            sword_group.empty()
+            screen.blit(image, (0, 0))
+            level = load_level('map2.txt')
+            player, level_x, level_y = generate_level(level)
+            daddies = player.shortest_paths(level)
+            sword = Sword(player.x, player.y)
+            FIRST_ROOM = not FIRST_ROOM
+        elif all(en.CANWALK == False for en in enemy_group):
+            end_screen()
+
         screen.fill((0, 0, 0))
         clock.tick(60)
         for event in pygame.event.get():
@@ -363,18 +392,6 @@ if __name__ == '__main__':
         player_group.draw(screen)
         sword_group.draw(screen)
         pygame.display.flip()
-        # if all(en.CANWALK == False for en in enemy_group) and FIRST_ROOM:
-        #     all_sprites.empty()
-        #     grasses_group.empty()
-        #     walls_group.empty()
-        #     player_group.empty()
-        #     enemy_group.empty()
-        #     sword_group.empty()
-        #     level = load_level('map2.txt')
-        #     player, level_x, level_y = generate_level(level)
-        #     sword = Sword(player.x, player.y)
-        if all(en.CANWALK == False for en in enemy_group):
-            end_screen()
 
     pygame.quit()
 # лалул
