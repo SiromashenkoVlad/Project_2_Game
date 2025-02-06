@@ -260,7 +260,27 @@ def start_screen():
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
+    ind = 0
+    time = 0
+
     while True:
+        screen.fill((0, 0, 0))
+        font = pygame.font.Font(None, 30)
+        text_coord = 50
+        for line in intro_text:
+            string_rendered = font.render(line, 1, pygame.Color('white'))
+            intro_rect = string_rendered.get_rect()
+            text_coord += 10
+            intro_rect.top = text_coord
+            intro_rect.x = 10
+            text_coord += intro_rect.height
+            screen.blit(string_rendered, intro_rect)
+        time += 1
+        if time > 10:
+            time = 0
+            ind += 1
+        im_an = pygame.transform.scale(load_image(f'an{ind % 6}.png', -1), (100, 100))
+        screen.blit(im_an, (250, 250))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
@@ -286,19 +306,20 @@ def end_screen(text="The end"):
     intro_text.append(f'Best time: {best_time}')
     # fon = pygame.transform.scale(load_image('fon.jpg'), (WIDTH, HEIGHT))
     # screen.blit(fon, (0, 0))
-    screen.fill((0, 0, 0))
-    font = pygame.font.Font(None, 50)
-    text_coord = 50
-    for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('white'))
-        intro_rect = string_rendered.get_rect()
-        text_coord += 10
-        intro_rect.top = text_coord
-        intro_rect.x = 10
-        text_coord += intro_rect.height
-        screen.blit(string_rendered, intro_rect)
 
     while True:
+        screen.fill((0, 0, 0))
+        font = pygame.font.Font(None, 50)
+        text_coord = 50
+        for line in intro_text:
+            string_rendered = font.render(line, 1, pygame.Color('white'))
+            intro_rect = string_rendered.get_rect()
+            text_coord += 10
+            intro_rect.top = text_coord
+            intro_rect.x = 10
+            text_coord += intro_rect.height
+            screen.blit(string_rendered, intro_rect)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
